@@ -1,5 +1,6 @@
 from pyspark.sql.functions import radians, sin, cos, sqrt, atan2, col, lit
 from pyspark.sql.types import DoubleType
+from pyspark.sql.functions import sum as sql_sum
 from pyspark.sql import SparkSession
 
 # Create SparkSession
@@ -17,9 +18,9 @@ def haversine(lat1, lon1, lat2, lon2):
 
 # Define inverse distance weighting UDF
 def idw(distances, temperatures):
-    weights = [1/d for d in distances]
-    weighted_temps = [t*w for t,w in zip(temperatures, weights)]
-    return sum(weighted_temps) / sum(weights)
+    weights = 1 / distances
+    weighted_temps = temperatures * weights
+    return sql_sum(weighted_temps) / sql_sum(weights)
 
 
 # Read station and temperature data
