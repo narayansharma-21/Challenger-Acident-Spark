@@ -24,25 +24,25 @@ def idw(distances, temperatures):
 # Read station and temperature data
 stations = spark.read.csv("data/stations.csv", header=True, inferSchema=True)
 temperatures = spark.read.csv("data/1986.csv", header=False, inferSchema=True) \
-                     .toDF("StationID", "WBANID", "Month", "Day", "Temperature")
+                     .toDF("station_id", "wban_id", "month", "day", "temperature")
 
 # Filter and clean up the data
-stations = stations.filter((stations["Latitude"].isNotNull()) & (stations["Longitude"].isNotNull()))
-temperatures = temperatures.filter((temperatures["Temperature"].isNotNull()) & (temperatures["Month"] == 1) & (temperatures["Day"] == 28))
+stations = stations.filter((stations["latitude"].isNotNull()) & (stations["longitude"].isNotNull()))
+temperatures = temperatures.filter((temperatures["temperature"].isNotNull()) & (temperatures["month"] == 1) & (temperatures["day"] == 28))
 
 # Join stations and temperatures data
-joined = temperatures.join(stations, ["StationID", "WBANID"])
+joined = temperatures.join(stations, ["station_id", "wban_id"])
 
 # Compute distances from each station to Cape Canaveral (28.3922° N, 80.6077° W)
 lat_cc = 28.3922
 lon_cc = -80.6077
-joined = joined.withColumn("Distance", haversine(lat_cc, lon_cc, joined["Latitude"], joined["Longitude"]).cast(DoubleType()))
+joined = joined.withColumn("distance", haversine(lat_cc, lon_cc, joined["latitude"], joined["longitude"]).cast(DoubleType()))
 
 # Filter for stations within 100 km of Cape Canaveral
-joined = joined.filter(joined["Distance"] <= 100)
+joined = joined.filter(joined["distance"] <= 100)
 
 # Compute IDW temperature at Cape Canaveral on January 28, 1986
-idw_temp = joined.groupby().agg(idw(col("Distance"), col("Temperature")).alias("IDW_Temperature")).collect()[0]["IDW_Temperature"]
+idw_temp = joined.groupby().agg(idw(col("distance"), col("temperature")).alias("IDW_Temperature")).collect()[0]["IDW_Temperature"]
 
 # Print result
 print("The estimated temperature at Cape Canaveral on January 28, 1986, using inverse distance weighting, is {:.2f} degrees F.".format(idw_temp))
