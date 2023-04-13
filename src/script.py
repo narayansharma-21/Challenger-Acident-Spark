@@ -17,9 +17,10 @@ def haversine(lat1, lon1, lat2, lon2):
 
 # Define inverse distance weighting UDF
 def idw(distances, temperatures):
-    weights = 1 / distances
-    weighted_temps = temperatures * weights
-    return weighted_temps.sum() / weights.sum()
+    weights = [1/d for d in distances]
+    weighted_temps = [t*w for t,w in zip(temperatures, weights)]
+    return sum(weighted_temps) / sum(weights)
+
 
 # Read station and temperature data
 stations = spark.read.csv("data/stations.csv", header=True, inferSchema=True)
@@ -34,8 +35,8 @@ temperatures = temperatures.filter((temperatures["temperature"].isNotNull()) & (
 joined = temperatures.join(stations, ["station_id", "wban_id"])
 
 # Compute distances from each station to Cape Canaveral (28.3922° N, 80.6077° W)
-lat_cc = 28.3922
-lon_cc = -80.6077
+lat_cc = lit(28.3922)
+lon_cc = lit(-80.6077)
 joined = joined.withColumn("distance", haversine(lat_cc, lon_cc, joined["latitude"], joined["longitude"]).cast(DoubleType()))
 
 # Filter for stations within 100 km of Cape Canaveral
